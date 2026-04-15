@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Patch Executor</title>
+</head>
+<body>
+    <h1>Run this in browser console:</h1>
+    <pre id="code"></pre>
+    <script>
+        const code = `
+// Paste this in the browser console where the file system is accessible
+
+fetch('/imports/Form-1621-8529.tsx')
+    .then(r => r.text())
+    .then(content => {
+        const lines = content.split('\\n');
+        console.log('Total lines:', lines.length);
+        
+        // Insert after line 1786
+        const newSection = [
+            '',
+            '          <div className="flex flex-col">',
+            '           {/* Supporting Documents */}',
+            '           <GridSectionHeader title="17. SUPPORTING DOCUMENTS" expanded={sections.supportingDocs} onToggle={() => toggleSection(\\'supportingDocs\\')} />',
+            '          {sections.supportingDocs && (',
+            '            <div className="w-full overflow-x-auto bg-white">',
+            '                <SupportingDocumentsTable />',
+            '            </div>',
+            '          )}',
+            '',
+            '          </div>'
+        ];
+        
+        lines.splice(1786, 0, ...newSection);
+        
+        // Now send the modified content back
+        console.log('Patched! New line count:', lines.length);
+        return lines.join('\\n');
+    });
+`;
+        document.getElementById('code').textContent = code;
+    </script>
+</body>
+</html>

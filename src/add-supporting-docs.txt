@@ -1,0 +1,31 @@
+INSERT THIS CODE BLOCK AFTER LINE 1784 (after the "})") and BEFORE LINE 1786 (before the "</div>"):
+
+          {/* Section 17: Supporting Documents */}
+          <div className="flex flex-col">
+            <GridSectionHeader title="17. SUPPORTING DOCUMENTS" icon={ScrollText} expanded={sections.supportingDocs} onToggle={() => toggleSection('supportingDocs')} />
+            {sections.supportingDocs && (
+              <div className="w-full overflow-x-auto bg-white">
+                <SupportingDocumentsTable />
+              </div>
+            )}
+          </div>
+
+---
+
+STEP-BY-STEP INSTRUCTIONS:
+
+1. Open `/imports/Form-1621-8529.tsx` in your editor
+2. Go to line 1784 (it shows: `          )}`)
+3. After line 1784, press Enter to create a blank line (line 1785)
+4. On the NEW blank line 1785, add an empty line
+5. Then paste the code block above (lines 1786-1794)
+6. Save the file
+
+The result should be:
+- Line 1784: `          )}`
+- Line 1785: (blank)
+- Line 1786: `          {/* Section 17: Supporting Documents */}`
+- Line 1787: `          <div className="flex flex-col">`
+- ... etc
+
+This will add Section 17 (Supporting Documents) with the full Job Details table to the Edit Item screen.

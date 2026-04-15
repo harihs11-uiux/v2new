@@ -299,10 +299,34 @@ function StatusToolbar({ onAddStatus, onClose, onSave }: { onAddStatus: (statusN
 }
 
 // Section components for each form section
-function InvoiceDetailsSection({ activeCell, onExpandRow, jobType }: { activeCell: { section: string; rowIndex: number; columnId: string } | null, onExpandRow?: (row: any, mode?: 'split' | 'stacked') => void, jobType?: string }) {
+function SectionToolbar({ saveLabel, closeLabel, onSave, onClose }: { saveLabel: string; closeLabel: string; onSave?: () => void; onClose?: () => void }) {
+  const [saved, setSaved] = React.useState(false);
+  const handleSave = () => {
+    if (onSave) onSave();
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+  return (
+    <div className="flex items-center justify-end gap-2 px-3 py-1.5 bg-[#f0f3fa] border-b border-[#d0d5e3] shrink-0">
+      <div
+        className="bg-[rgba(56,116,255,0.1)] flex items-center justify-center px-3 py-1 rounded cursor-pointer hover:bg-[rgba(56,116,255,0.2)] transition-colors border border-[#3874ff]"
+        onClick={onClose}
+      >
+        <span className="font-semibold text-[#3874ff] text-[13px]">{closeLabel}</span>
+      </div>
+      <div
+        className={`flex items-center justify-center px-3 py-1 rounded cursor-pointer transition-colors ${saved ? 'bg-[#22c55e]' : 'bg-[#3874ff] hover:bg-[#2563eb]'}`}
+        onClick={handleSave}
+      >
+        <span className="font-semibold text-white text-[13px]">{saved ? '✓ Saved' : saveLabel}</span>
+      </div>
+    </div>
+  );
+}
+
+function InvoiceDetailsSection({ activeCell, onExpandRow, onClose, jobType }: { activeCell: { section: string; rowIndex: number; columnId: string } | null, onExpandRow?: (row: any, mode?: 'split' | 'stacked') => void, onClose?: () => void, jobType?: string }) {
   const handleInvoiceClick = (invoiceData: any) => {
     console.log('Invoice clicked:', invoiceData);
-    // Handle invoice click - could open details modal, navigate to edit page, etc.
     if (onExpandRow) {
       onExpandRow(invoiceData, 'stacked');
     }
@@ -310,16 +334,20 @@ function InvoiceDetailsSection({ activeCell, onExpandRow, jobType }: { activeCel
 
   const handleAddInvoice = () => {
     console.log('Add invoice clicked');
-    // Handle add invoice action
   };
 
   const handleInvoiceUpload = (files: File[]) => {
     console.log('Invoice files uploaded:', files);
-    // Handle invoice file upload
   };
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden w-full h-full flex flex-col" data-section="invoice">
+      <SectionToolbar
+        saveLabel="Save Invoice"
+        closeLabel="Close Invoice"
+        onSave={() => console.log('Save invoice clicked')}
+        onClose={onClose}
+      />
       <div className="flex-1 w-full min-h-0">
         <InvoiceTable 
           onInvoiceClick={handleInvoiceClick}
@@ -373,9 +401,15 @@ function SingleWindowInfoSection({ title }: { title?: string }) {
   );
 }
 
-function ItemDetailsSection({ activeCell, onExpandRow, isExport }: { activeCell: { section: string; rowIndex: number; columnId: string } | null, onExpandRow?: (row: any, mode: 'split' | 'stacked') => void, isExport?: boolean }) {
+function ItemDetailsSection({ activeCell, onExpandRow, onClose, isExport }: { activeCell: { section: string; rowIndex: number; columnId: string } | null, onExpandRow?: (row: any, mode: 'split' | 'stacked') => void, onClose?: () => void, isExport?: boolean }) {
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden w-full h-full flex flex-col" data-section="itemDetails">
+      <SectionToolbar
+        saveLabel="Save Item"
+        closeLabel="Close Item"
+        onSave={() => console.log('Save item clicked')}
+        onClose={onClose}
+      />
       <div className="flex-1 w-full min-h-0">
         <ItemDetailsTable activeCell={activeCell} onExpandRow={onExpandRow} isExport={isExport} />
       </div>
@@ -1443,7 +1477,7 @@ export default function JobDetailsPage({
 
           {activeNavigationSection === 'invoiceDetails' && (
             <div id="invoiceDetails" className="w-full h-full">
-              <InvoiceDetailsSection activeCell={activeCell} onExpandRow={handleInvoiceExpand} jobType={jobData?.type} />
+              <InvoiceDetailsSection activeCell={activeCell} onExpandRow={handleInvoiceExpand} onClose={handleBackToJobList} jobType={jobData?.type} />
             </div>
           )}
 
@@ -1462,7 +1496,7 @@ export default function JobDetailsPage({
 
           {activeNavigationSection === 'itemDetails' && (
             <div id="itemDetails" className="w-full h-full">
-              <ItemDetailsSection activeCell={activeCell} onExpandRow={handleItemExpand} isExport={jobData?.type === 'Export'} />
+              <ItemDetailsSection activeCell={activeCell} onExpandRow={handleItemExpand} onClose={handleBackToJobList} isExport={jobData?.type === 'Export'} />
             </div>
           )}
 

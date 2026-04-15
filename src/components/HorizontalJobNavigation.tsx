@@ -176,7 +176,7 @@ function CloseButton({ onClick }: { onClick?: () => void }) {
     >
       <div aria-hidden="true" className="absolute border border-[#3874ff] border-solid inset-0 pointer-events-none rounded-[4px]" />
       <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[#3874ff] text-[14px] text-nowrap">
-        <p className="leading-[18px]">Close</p>
+        <p className="leading-[18px]">Close Job</p>
       </div>
     </div>
   );
@@ -190,7 +190,7 @@ function SaveButton({ onClick }: { onClick?: () => void }) {
       onClick={onClick}
     >
       <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-nowrap text-white">
-        <p className="leading-[18px]">Save</p>
+        <p className="leading-[18px]">Save Job</p>
       </div>
     </div>
   );

@@ -418,7 +418,7 @@ function RightSideControls1() {
 function Button3({ onClick }: { onClick?: () => void }) {
   return (
     <div 
-      className="relative bg-[rgba(56,116,255,0.1)] box-border content-stretch flex gap-2 h-6 items-center justify-center px-2 py-1 rounded w-[51px] cursor-pointer hover:bg-[rgba(56,116,255,0.2)] transition-colors z-50" 
+      className="relative bg-[rgba(56,116,255,0.1)] box-border content-stretch flex gap-2 h-6 items-center justify-center px-2 py-1 rounded w-auto cursor-pointer hover:bg-[rgba(56,116,255,0.2)] transition-colors z-50" 
       data-name="Button"
       onClick={() => {
         console.log("Close button clicked");
@@ -427,7 +427,7 @@ function Button3({ onClick }: { onClick?: () => void }) {
     >
       <div aria-hidden="true" className="absolute border border-[#3874ff] border-solid inset-0 pointer-events-none rounded" />
       <div className="flex flex-col font-['Inter:Semi_Bold',_sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[#3874ff] text-[14px] text-nowrap">
-        <p className="leading-[18px] whitespace-pre">Close</p>
+        <p className="leading-[18px] whitespace-pre">Close Invoice</p>
       </div>
     </div>
   );

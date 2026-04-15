@@ -40,7 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./ui/alert-dialog";
-import svgPaths from '../imports/svg-p9punt5lq';
+
 
 function Error() {
   return (

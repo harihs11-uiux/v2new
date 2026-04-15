@@ -1,18 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import svgPaths from "../imports/svg-mn5ggoluqe";
 import dashboardNavSvgPaths from "../imports/svg-gup212ddf5";
-import imgRectangle from "figma:asset/8cc819c2d6ea64fde4fdd06223397b7ace3c6e90.png";
-import imgRectangle1 from "figma:asset/6e77900023aac277a0be23d4420dc0cc895f81bd.png";
-import imgRectangle2 from "figma:asset/0bcb81680f6892fea6e8bb5cbf6a74e628f05704.png";
-import imgRectangle3 from "figma:asset/ccfdf8bf550e835f959f29fb388e197e21f34f8a.png";
-import imgRectangle4 from "figma:asset/73a3f987b8a9b1d20da3025b0eb5eda864814ba7.png";
-import imgRectangle5 from "figma:asset/da80c3e5bed4d321374c7a924645916e05c16609.png";
-import imgRectangle6 from "figma:asset/25fbd91f4453ed8a90f9c59569d42ed46e1f1148.png";
-import imgRectangle7 from "figma:asset/84911d0d9fb4574fa518d771070f903dfe43583d.png";
-import imgRectangle8 from "figma:asset/3a8d80cbb90008d5b549132bacd4adc7f9ae526d.png";
-import imgRectangle9 from "figma:asset/d8582cbe37be3d46afacb57db4c949136a085261.png";
-import { ChevronDown } from 'lucide-react';
-import FilingDueSection from '../imports/Section-3011-16071';
+import { ChevronDown, TrendingUp, TrendingDown, RefreshCw, Download, Settings2, AlertCircle, CheckCircle2, Clock, FileText } from 'lucide-react';
+import {
+  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Legend
+} from 'recharts';
 
 interface DashboardViewProps {
   jobs?: any[];
@@ -20,42 +14,167 @@ interface DashboardViewProps {
   onTabChange?: (tab: 'Dashboard' | 'Import' | 'Export') => void;
 }
 
-// Dashboard Navigation Toolbar Components
+const generateData = (branch: string, mode: string, importer: string, period: string) => {
+  const seed = (branch + mode + importer + period).length;
+  const r = (base: number, variance: number) => Math.round(base + (seed % variance) - variance / 2);
+
+  const monthlyVolume = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'].map((month, i) => ({
+    month,
+    Import: r(120 + i * 10, 40),
+    Export: r(80 + i * 8, 30),
+  }));
+
+  const jobsByStatus = [
+    { name: 'In Progress', value: r(234, 60), color: '#3874FF' },
+    { name: 'Completed', value: r(589, 80), color: '#22C55E' },
+    { name: 'Pending', value: r(24, 12), color: '#F97316' },
+    { name: 'On Hold', value: r(18, 10), color: '#EF4444' },
+  ];
+
+  const tatData = ['Sea', 'Air', 'Road', 'Rail'].map((m) => ({
+    mode: m, Avg: r(8, 6), Target: 7,
+  }));
+
+  const filingDue = [
+    { day: 'Mon', Overdue: r(3, 4), Today: r(5, 4), Upcoming: r(8, 6) },
+    { day: 'Tue', Overdue: r(2, 3), Today: r(7, 4), Upcoming: r(6, 4) },
+    { day: 'Wed', Overdue: r(4, 4), Today: r(4, 4), Upcoming: r(9, 6) },
+    { day: 'Thu', Overdue: r(1, 3), Today: r(6, 4), Upcoming: r(7, 5) },
+    { day: 'Fri', Overdue: r(5, 4), Today: r(3, 3), Upcoming: r(5, 4) },
+  ];
+
+  const topImporters = [
+    { name: 'ABC Industries', jobs: r(145, 40) },
+    { name: 'XYZ Corporation', jobs: r(112, 30) },
+    { name: 'Tech Solutions', jobs: r(98, 25) },
+    { name: 'Global Traders', jobs: r(87, 20) },
+    { name: 'Metro Exports', jobs: r(64, 18) },
+  ];
+
+  const total = jobsByStatus.reduce((a, b) => a + b.value, 0);
+  return { monthlyVolume, jobsByStatus, tatData, filingDue, topImporters, total, completed: jobsByStatus[1].value, inProgress: jobsByStatus[0].value, pending: jobsByStatus[2].value };
+};
+
+function AnimatedNumber({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+  const ref = useRef(value);
+  useEffect(() => {
+    const start = ref.current;
+    const diff = value - start;
+    const steps = 30;
+    let step = 0;
+    const timer = setInterval(() => {
+      step++;
+      setDisplay(Math.round(start + (diff * step) / steps));
+      if (step >= steps) { clearInterval(timer); ref.current = value; }
+    }, 16);
+    return () => clearInterval(timer);
+  }, [value]);
+  return <>{display.toLocaleString()}</>;
+}
+
+function StatCard({ label, value, sub, trend, icon: Icon, color, onClick, active }: any) {
+  return (
+    <div onClick={onClick} className={`bg-white rounded-lg p-4 border cursor-pointer transition-all duration-200 hover:shadow-md ${active ? 'border-[#3874FF] shadow-md ring-1 ring-[#3874FF]/20' : 'border-[#d0d5e3]'}`}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[12px] text-[#626776] font-medium">{label}</p>
+        <div className="p-1.5 rounded-md" style={{ backgroundColor: color + '18' }}>
+          <Icon className="w-4 h-4" style={{ color }} />
+        </div>
+      </div>
+      <p className="text-[28px] font-semibold text-[#050e25] leading-none mb-2"><AnimatedNumber value={value} /></p>
+      <div className="flex items-center gap-1">
+        {trend === 'up' && <TrendingUp className="w-3 h-3 text-[#22c55e]" />}
+        {trend === 'down' && <TrendingDown className="w-3 h-3 text-[#ef4444]" />}
+        <p className={`text-[11px] ${trend === 'up' ? 'text-[#22c55e]' : trend === 'down' ? 'text-[#ef4444]' : 'text-[#626776]'}`}>{sub}</p>
+      </div>
+    </div>
+  );
+}
+
+function FilterDropdown({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <div onClick={() => setOpen(!open)} className="flex gap-2 items-center px-3 py-1.5 rounded-full border border-[#d0d5e3] cursor-pointer hover:bg-white transition-colors">
+        <p className="text-[13px] text-[#626776] whitespace-nowrap">{label}: <span className="text-[#050e25] font-medium">{value}</span></p>
+        <ChevronDown className={`w-3.5 h-3.5 text-[#626776] transition-transform ${open ? 'rotate-180' : ''}`} />
+      </div>
+      {open && (<>
+        <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+        <div className="absolute top-full mt-1 left-0 bg-white border border-[#d0d5e3] rounded-lg shadow-lg z-20 min-w-[160px] py-1">
+          {options.map(o => (
+            <div key={o} onClick={() => { onChange(o); setOpen(false); }}
+              className={`px-3 py-2 text-[13px] cursor-pointer hover:bg-[#f5f7ff] ${value === o ? 'text-[#3874ff] font-medium bg-[#f5f7ff]' : 'text-[#050e25]'}`}>{o}</div>
+          ))}
+        </div>
+      </>)}
+    </div>
+  );
+}
+
+function PeriodDropdown({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <div onClick={() => setOpen(!open)} className="flex gap-2 items-center px-3 py-1.5 cursor-pointer hover:bg-gray-50 rounded border border-[#d0d5e3] min-w-[140px]">
+        <p className="text-[13px] text-[#050e25] flex-1">{value}</p>
+        <ChevronDown className={`w-3.5 h-3.5 text-[#626776] transition-transform ${open ? 'rotate-180' : ''}`} />
+      </div>
+      {open && (<>
+        <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+        <div className="absolute top-full mt-1 right-0 bg-white border border-[#d0d5e3] rounded-lg shadow-lg z-20 min-w-[160px] py-1">
+          {options.map(o => (
+            <div key={o} onClick={() => { onChange(o); setOpen(false); }}
+              className={`px-3 py-2 text-[13px] cursor-pointer hover:bg-[#f5f7ff] ${value === o ? 'text-[#3874ff] font-medium bg-[#f5f7ff]' : 'text-[#050e25]'}`}>{o}</div>
+          ))}
+        </div>
+      </>)}
+    </div>
+  );
+}
+
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white border border-[#d0d5e3] rounded-lg shadow-lg p-3 text-[12px]">
+      {label && <p className="font-semibold text-[#050e25] mb-1">{label}</p>}
+      {payload.map((p: any) => (
+        <p key={p.dataKey} className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+          <span className="text-[#626776]">{p.name}:</span>
+          <span className="font-semibold text-[#050e25]">{p.value}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function DashboardMark() {
   return (
     <div className="absolute h-[32px] left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] w-[21.333px]">
       <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 22 32">
         <g>
-          <path d={dashboardNavSvgPaths.p1d1c6f00} fill="url(#paint0_linear_dashboard)" />
-          <path d={dashboardNavSvgPaths.p2f5870f2} fill="url(#paint1_linear_dashboard)" />
-          <path d={dashboardNavSvgPaths.p30e32800} fill="url(#paint2_linear_dashboard)" />
-          <path d={dashboardNavSvgPaths.p11744380} fill="url(#paint3_linear_dashboard)" />
-          <path d={dashboardNavSvgPaths.p31e5ac00} fill="url(#paint4_linear_dashboard)" />
+          <path d={dashboardNavSvgPaths.p1d1c6f00} fill="url(#pg0)" />
+          <path d={dashboardNavSvgPaths.p2f5870f2} fill="url(#pg1)" />
+          <path d={dashboardNavSvgPaths.p30e32800} fill="url(#pg2)" />
+          <path d={dashboardNavSvgPaths.p11744380} fill="url(#pg3)" />
+          <path d={dashboardNavSvgPaths.p31e5ac00} fill="url(#pg4)" />
         </g>
         <defs>
-          <linearGradient gradientUnits="userSpaceOnUse" id="paint0_linear_dashboard" x1="8.51224" x2="2.42334" y1="3.43591" y2="9.90072">
-            <stop stopColor="#3874FF" />
-            <stop offset="1" stopColor="#2852B5" />
-          </linearGradient>
-          <linearGradient gradientUnits="userSpaceOnUse" id="paint1_linear_dashboard" x1="18.734" x2="12.1398" y1="22.2212" y2="28.4871">
-            <stop stopColor="#2852B5" />
-            <stop offset="1" stopColor="#3874FF" />
-          </linearGradient>
-          <linearGradient gradientUnits="userSpaceOnUse" id="paint2_linear_dashboard" x1="8.43409" x2="21.3863" y1="9.2237" y2="15.3269">
-            <stop offset="0.0797732" stopColor="#3874FF" />
-            <stop offset="0.37268" stopColor="#82A7FF" />
-            <stop offset="0.813761" stopColor="#3874FF" />
-          </linearGradient>
-          <linearGradient gradientUnits="userSpaceOnUse" id="paint3_linear_dashboard" x1="11.8385" x2="1.67426" y1="23.7239" y2="18.2375">
-            <stop offset="0.0797732" stopColor="#3874FF" />
-            <stop offset="0.374435" stopColor="#82A7FF" />
-            <stop offset="1" stopColor="#3874FF" />
-          </linearGradient>
-          <linearGradient gradientUnits="userSpaceOnUse" id="paint4_linear_dashboard" x1="3.46187" x2="21.5248" y1="12.1612" y2="19.5301">
-            <stop offset="0.141199" stopColor="#3874FF" />
-            <stop offset="0.424841" stopColor="#82A7FF" />
-            <stop offset="0.751251" stopColor="#3874FF" />
-          </linearGradient>
+          {[['pg0','8.51224','2.42334','3.43591','9.90072','#3874FF','#2852B5'],
+            ['pg1','18.734','12.1398','22.2212','28.4871','#2852B5','#3874FF']].map(([id,x1,x2,y1,y2,c1,c2]) => (
+            <linearGradient key={id} gradientUnits="userSpaceOnUse" id={id} x1={x1} x2={x2} y1={y1} y2={y2}>
+              <stop stopColor={c1} /><stop offset="1" stopColor={c2} />
+            </linearGradient>
+          ))}
+          {[['pg2','8.43409','21.3863','9.2237','15.3269'],
+            ['pg3','11.8385','1.67426','23.7239','18.2375'],
+            ['pg4','3.46187','21.5248','12.1612','19.5301']].map(([id,x1,x2,y1,y2]) => (
+            <linearGradient key={id} gradientUnits="userSpaceOnUse" id={id} x1={x1} x2={x2} y1={y1} y2={y2}>
+              <stop offset="0.08" stopColor="#3874FF" /><stop offset="0.37" stopColor="#82A7FF" /><stop offset="0.81" stopColor="#3874FF" />
+            </linearGradient>
+          ))}
         </defs>
       </svg>
     </div>
@@ -63,531 +182,277 @@ function DashboardMark() {
 }
 
 function DashboardNavToolbar({ activeTab = 'Dashboard', onTabChange }: Pick<DashboardViewProps, 'activeTab' | 'onTabChange'>) {
-  const [isJobDropdownOpen, setIsJobDropdownOpen] = useState(false);
-
   return (
-    <div className="bg-[#242c40] h-[48px] relative w-full mb-6" data-name="Dashboard Navigation">
+    <div className="bg-[#242c40] h-[48px] relative w-full shrink-0">
       <div aria-hidden="true" className="absolute border-[#545d76] border-[0px_0px_1px] border-solid inset-0 pointer-events-none" />
-      <div className="flex flex-row items-center size-full">
-        <div className="content-stretch flex items-center justify-between px-[12px] py-0 relative size-full">
-          {/* Left Side - Logo and Module Title */}
-          <div className="basis-0 content-stretch flex gap-[12px] grow items-center min-h-px min-w-px relative shrink-0">
-            {/* Logo */}
-            <div className="overflow-clip relative shrink-0 size-[32px]">
-              <DashboardMark />
+      <div className="flex items-center justify-between h-full px-3">
+        <div className="flex gap-3 items-center">
+          <div className="overflow-clip relative shrink-0 size-[32px]"><DashboardMark /></div>
+          <div className="w-px h-6 bg-[#545d76]" />
+          <p className="font-semibold text-[16px] text-white">Job Management</p>
+        </div>
+        <div className="flex items-center">
+          {(['Dashboard', 'Import', 'Export'] as const).map(tab => (
+            <div key={tab} onClick={() => onTabChange?.(tab)}
+              className={`flex h-[48px] items-center justify-center px-3 py-1 relative cursor-pointer transition-colors ${activeTab !== tab ? 'hover:bg-[#333b4f]' : ''}`}>
+              {activeTab === tab && <div aria-hidden="true" className="absolute border-[#3874ff] border-[0px_0px_2px] border-solid inset-0 pointer-events-none" />}
+              <p className={`text-[14px] whitespace-nowrap ${activeTab === tab ? 'font-semibold text-white' : 'font-medium text-[#cdcfd3]'}`}>{tab}</p>
             </div>
-            
-            {/* Separator */}
-            <div className="flex h-[48px] items-center justify-center relative shrink-0 w-0">
-              <div className="flex-none rotate-[90deg]">
-                <div className="h-0 relative w-[48px]">
-                  <div className="absolute inset-[-1px_0_0_0]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 48 1">
-                      <line stroke="#545D76" x2="48" y1="0.5" y2="0.5" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Job Management Dropdown */}
-            <div 
-              className="content-stretch flex gap-[8px] items-center p-[4px] relative shrink-0 cursor-pointer hover:bg-[#333b4f] rounded transition-colors"
-              onClick={() => setIsJobDropdownOpen(!isJobDropdownOpen)}
-            >
-              <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[20px] not-italic overflow-ellipsis overflow-hidden relative shrink-0 text-[16px] text-nowrap text-white">
-                Job Management
-              </p>
-              <div className="flex items-center justify-center leading-[0] relative shrink-0">
-                <ChevronDown className={`h-[18px] w-[18px] text-[#CDCFD3] transition-transform ${isJobDropdownOpen ? '' : 'rotate-180'}`} />
-              </div>
-            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative shrink-0 size-[18px] cursor-pointer hover:opacity-70">
+            <svg className="block size-full" fill="none" viewBox="0 0 18 18">
+              <mask height="18" id="mc" maskUnits="userSpaceOnUse" style={{ maskType: 'alpha' }} width="18" x="0" y="0"><rect fill="#D9D9D9" height="18" width="18" /></mask>
+              <g mask="url(#mc)"><path d={dashboardNavSvgPaths.p30a00d00} fill="#CDCFD3" /></g>
+            </svg>
+            <div className="absolute top-0 right-0 w-2 h-2 bg-[#CF3B3B] rounded-full border border-[#242c40]" />
           </div>
-
-          {/* Center - Tabs */}
-          <div className="content-stretch flex items-start relative shrink-0">
-            {/* Dashboard Tab */}
-            <div 
-              className={`content-stretch flex h-[48px] items-center justify-center px-[12px] py-[4px] relative shrink-0 cursor-pointer transition-colors ${activeTab !== 'Dashboard' ? 'hover:bg-[#333b4f]' : ''}`}
-              onClick={() => onTabChange?.('Dashboard')}
-            >
-              {activeTab === 'Dashboard' && (
-                <div aria-hidden="true" className="absolute border-[#3874ff] border-[0px_0px_2px] border-solid inset-0 pointer-events-none" />
-              )}
-              <div className={`flex flex-col font-['Inter:${activeTab === 'Dashboard' ? 'Semi_Bold' : 'Medium'}',sans-serif] font-${activeTab === 'Dashboard' ? 'semibold' : 'medium'} justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-nowrap ${activeTab === 'Dashboard' ? 'text-white' : 'text-[#cdcfd3]'}`}>
-                <p className="leading-[18px]">Dashboard</p>
-              </div>
-            </div>
-
-            {/* Import Tab */}
-            <div 
-              className={`content-stretch flex h-[48px] items-center justify-center px-[12px] py-[4px] relative shrink-0 cursor-pointer transition-colors ${activeTab !== 'Import' ? 'hover:bg-[#333b4f]' : ''}`}
-              onClick={() => onTabChange?.('Import')}
-            >
-              {activeTab === 'Import' && (
-                <div aria-hidden="true" className="absolute border-[#3874ff] border-[0px_0px_2px] border-solid inset-0 pointer-events-none" />
-              )}
-              <div className={`flex flex-col font-['Inter:${activeTab === 'Import' ? 'Semi_Bold' : 'Medium'}',sans-serif] font-${activeTab === 'Import' ? 'semibold' : 'medium'} justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-nowrap ${activeTab === 'Import' ? 'text-white' : 'text-[#cdcfd3]'}`}>
-                <p className="leading-[18px]">Import</p>
-              </div>
-            </div>
-
-            {/* Export Tab */}
-            <div 
-              className={`content-stretch flex h-[48px] items-center justify-center px-[12px] py-[4px] relative shrink-0 cursor-pointer transition-colors ${activeTab !== 'Export' ? 'hover:bg-[#333b4f]' : ''}`}
-              onClick={() => onTabChange?.('Export')}
-            >
-              {activeTab === 'Export' && (
-                <div aria-hidden="true" className="absolute border-[#3874ff] border-[0px_0px_2px] border-solid inset-0 pointer-events-none" />
-              )}
-              <div className={`flex flex-col font-['Inter:${activeTab === 'Export' ? 'Semi_Bold' : 'Medium'}',sans-serif] font-${activeTab === 'Export' ? 'semibold' : 'medium'} justify-center leading-[0] not-italic relative shrink-0 text-[14px] text-nowrap ${activeTab === 'Export' ? 'text-white' : 'text-[#cdcfd3]'}`}>
-                <p className="leading-[18px]">Export</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Side - Icons and Profile */}
-          <div className="basis-0 content-stretch flex grow items-center justify-end min-h-px min-w-px relative shrink-0">
-            <div className="content-stretch flex gap-[12px] items-center relative shrink-0">
-              {/* Icons */}
-              <div className="content-stretch flex gap-[12px] items-center relative shrink-0">
-                {/* Campaign Icon with Notification */}
-                <div className="relative shrink-0 size-[18px] cursor-pointer hover:opacity-70 transition-opacity">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18 18">
-                    <mask height="18" id="mask0_campaign" maskUnits="userSpaceOnUse" style={{ maskType: "alpha" }} width="18" x="0" y="0">
-                      <rect fill="#D9D9D9" height="18" width="18" />
-                    </mask>
-                    <g mask="url(#mask0_campaign)">
-                      <path d={dashboardNavSvgPaths.p30a00d00} fill="#CDCFD3" />
-                    </g>
-                  </svg>
-                  <div className="absolute inset-[6.25%_31.25%_62.5%_37.5%]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 6 6">
-                      <circle cx="2.8125" cy="2.8125" fill="#CF3B3B" fillOpacity="0.19" r="2.8125" />
-                      <circle cx="2.8125" cy="2.8125" fill="#CF3B3B" r="1.6875" />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Chat Support Icon */}
-                <div className="relative shrink-0 size-[18px] cursor-pointer hover:opacity-70 transition-opacity">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18 18">
-                    <mask height="18" id="mask0_chat" maskUnits="userSpaceOnUse" style={{ maskType: "alpha" }} width="18" x="0" y="0">
-                      <rect fill="#D9D9D9" height="18" width="18" />
-                    </mask>
-                    <g mask="url(#mask0_chat)">
-                      <path d={dashboardNavSvgPaths.p37d2a380} fill="#CDCFD3" />
-                    </g>
-                  </svg>
-                </div>
-
-                {/* Notifications Icon */}
-                <div className="relative shrink-0 size-[18px] cursor-pointer hover:opacity-70 transition-opacity">
-                  <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18 18">
-                    <mask height="18" id="mask0_notifications" maskUnits="userSpaceOnUse" style={{ maskType: "alpha" }} width="18" x="0" y="0">
-                      <rect fill="#D9D9D9" height="18" width="18" />
-                    </mask>
-                    <g mask="url(#mask0_notifications)">
-                      <path d={dashboardNavSvgPaths.p28009c00} fill="#CDCFD3" />
-                    </g>
-                  </svg>
-                </div>
-              </div>
-
-              {/* Profile Details */}
-              <div className="bg-[#242c40] relative rounded-[4px] shrink-0 cursor-pointer hover:bg-[#333b4f] transition-colors">
-                <div className="content-stretch flex gap-[8px] items-center overflow-clip p-[4px] relative rounded-[inherit]">
-                  {/* Unifo Logo */}
-                  <div className="h-[24px] overflow-clip relative rounded-[4px] shrink-0 w-[84px]">
-                    <div className="absolute h-[22px] left-1/2 top-0 translate-x-[-50%] w-[58px]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 58 22">
-                        <g clipPath="url(#clip0_unifo)">
-                          <path clipRule="evenodd" d={dashboardNavSvgPaths.p1c99ee80} fill="white" fillRule="evenodd" />
-                        </g>
-                        <defs>
-                          <clipPath id="clip0_unifo">
-                            <rect fill="white" height="22" width="58" />
-                          </clipPath>
-                        </defs>
-                      </svg>
-                    </div>
-                  </div>
-                  {/* Avatar */}
-                  <div className="relative shrink-0 size-[24px]">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" fill="#FE7C7C" r="12" />
-                      <g>
-                        <path d={dashboardNavSvgPaths.p187c5080} fill="white" />
-                        <path d={dashboardNavSvgPaths.p30fd8300} fill="white" />
-                      </g>
-                    </svg>
-                  </div>
-                </div>
-                <div aria-hidden="true" className="absolute border border-[#545d76] border-solid inset-0 pointer-events-none rounded-[4px]" />
-              </div>
-            </div>
+          <div className="bg-[#333b4f] border border-[#545d76] rounded px-2 py-1 flex items-center gap-2 cursor-pointer hover:bg-[#3e4760] transition-colors">
+            <div className="w-5 h-5 rounded-full bg-[#FE7C7C] flex items-center justify-center text-white text-[10px] font-bold">A</div>
+            <p className="text-[13px] text-white font-medium">Admin</p>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-interface FilterDropdownProps {
-  label: string;
-  value: string;
-  options: string[];
-  onChange: (value: string) => void;
-}
-
-function FilterDropdown({ label, value, options, onChange }: FilterDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <div 
-        className="content-stretch flex gap-[8px] items-center px-[8px] py-[4px] rounded-[28px] shrink-0 cursor-pointer hover:bg-gray-50 transition-colors" 
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <div aria-hidden="true" className="absolute border border-[#d0d5e3] border-solid inset-0 pointer-events-none rounded-[28px]" />
-        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[16px] not-italic relative shrink-0 text-[#626776] text-[14px] text-nowrap">
-          {label}: {value}
-        </p>
-        <ChevronDown className={`h-[18px] w-[18px] text-[#626776] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </div>
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full mt-1 left-0 bg-white border border-[#d0d5e3] rounded-lg shadow-lg z-20 min-w-[180px]">
-            {options.map((option) => (
-              <div
-                key={option}
-                className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-[14px] text-[#050e25] first:rounded-t-lg last:rounded-b-lg"
-                onClick={() => {
-                  onChange(option);
-                  setIsOpen(false);
-                }}
-              >
-                {option}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-interface PeriodDropdownProps {
-  value: string;
-  options: string[];
-  onChange: (value: string) => void;
-}
-
-function PeriodDropdown({ value, options, onChange }: PeriodDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <div 
-        className="content-stretch flex gap-[4px] items-center p-[4px] shrink-0 w-[158px] cursor-pointer hover:bg-gray-50 transition-colors" 
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <div aria-hidden="true" className="absolute border-[#d0d5e3] border-[0px_0px_1px] border-solid inset-0 pointer-events-none" />
-        <p className="basis-0 font-['Inter:Regular',sans-serif] font-normal grow leading-[18px] min-h-px min-w-px not-italic overflow-ellipsis overflow-hidden relative shrink-0 text-[#050e25] text-[14px] text-nowrap">
-          {value}
-        </p>
-        <ChevronDown className={`h-[18px] w-[18px] text-[#626776] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </div>
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full mt-1 right-0 bg-white border border-[#d0d5e3] rounded-lg shadow-lg z-20 min-w-[158px]">
-            {options.map((option) => (
-              <div
-                key={option}
-                className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-[14px] text-[#050e25] first:rounded-t-lg last:rounded-b-lg"
-                onClick={() => {
-                  onChange(option);
-                  setIsOpen(false);
-                }}
-              >
-                {option}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 }
 
 export default function DashboardView({ jobs = [], activeTab = 'Dashboard', onTabChange }: DashboardViewProps) {
-  const [branchFilter, setBranchFilter] = useState('Chennai');
-  const [modeFilter, setModeFilter] = useState('All');
-  const [importerFilter, setImporterFilter] = useState('All');
-  const [timePeriod, setTimePeriod] = useState('Last 3 months');
-  const [isFilterApplied, setIsFilterApplied] = useState(false);
+  const [branch, setBranch] = useState('Chennai');
+  const [mode, setMode] = useState('All');
+  const [importer, setImporter] = useState('All');
+  const [period, setPeriod] = useState('Last 3 months');
+  const [activeCard, setActiveCard] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [data, setData] = useState(() => generateData('Chennai', 'All', 'All', 'Last 3 months'));
 
-  const branchOptions = ['All', 'Chennai', 'Mumbai', 'Delhi', 'Bangalore', 'Kolkata', 'Hyderabad'];
-  const modeOptions = ['All', 'Sea', 'Air', 'Road', 'Rail'];
-  const importerOptions = ['All', 'ABC Industries', 'XYZ Corporation', 'Tech Solutions Ltd', 'Global Traders'];
-  const periodOptions = ['Last 7 days', 'Last 30 days', 'Last 3 months', 'Last 6 months', 'Last year'];
+  useEffect(() => { setData(generateData(branch, mode, importer, period)); }, [branch, mode, importer, period]);
 
-  const handleClearFilters = () => {
-    setBranchFilter('All');
-    setModeFilter('All');
-    setImporterFilter('All');
-    setIsFilterApplied(false);
-  };
-
-  const handleApplyFilter = () => {
-    setIsFilterApplied(true);
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setData(generateData(branch + Math.random(), mode, importer, period));
+      setLastUpdated(new Date());
+      setIsRefreshing(false);
+    }, 800);
   };
 
   const handleDownload = () => {
-    // Create CSV data
-    const csvData = [
-      ['Dashboard Report'],
-      ['Period:', timePeriod],
-      ['Branch:', branchFilter],
-      ['Mode of Transport:', modeFilter],
-      ['Importer:', importerFilter],
-      [''],
-      ['Generated on:', new Date().toLocaleString()],
-    ];
-    
-    const csvContent = csvData.map(row => row.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
+    const rows = [['Metric','Value'],['Total Jobs',data.total],['Completed',data.completed],['In Progress',data.inProgress],['Pending',data.pending],['Period',period],['Branch',branch],['Mode',mode],['Importer',importer],['Generated',new Date().toLocaleString()]];
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `dashboard-report-${new Date().toISOString().split('T')[0]}.csv`;
+    a.href = 'data:text/csv,' + encodeURIComponent(rows.map(r => r.join(',')).join('\n'));
+    a.download = `dashboard-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
-    window.URL.revokeObjectURL(url);
   };
 
-  const handleRefresh = () => {
-    console.log('Refreshing dashboard data...');
-    // Add refresh logic here
+  const RADIAN = Math.PI / 180;
+  const renderLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+    if (percent < 0.08) return null;
+    const r = innerRadius + (outerRadius - innerRadius) * 0.5;
+    return <text x={cx + r * Math.cos(-midAngle * RADIAN)} y={cy + r * Math.sin(-midAngle * RADIAN)} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600}>{`${(percent * 100).toFixed(0)}%`}</text>;
   };
 
-  const handleCustomize = () => {
-    console.log('Opening customization panel...');
-    // Add customization logic here
-  };
+  const recentJobs = [
+    { job: 'ICB/10234/2025-26', importer: 'ABC Industries', mode: 'Sea', port: 'Chennai', date: '12 Apr 2025', status: 'In Progress', color: '#3874FF' },
+    { job: 'ICB/10198/2025-26', importer: 'XYZ Corporation', mode: 'Air', port: 'Mumbai', date: '11 Apr 2025', status: 'Completed', color: '#22C55E' },
+    { job: 'ICB/10167/2025-26', importer: 'Tech Solutions', mode: 'Sea', port: 'Chennai', date: '10 Apr 2025', status: 'Pending', color: '#F97316' },
+    { job: 'ICB/10142/2025-26', importer: 'Global Traders', mode: 'Road', port: 'Delhi', date: '09 Apr 2025', status: 'Completed', color: '#22C55E' },
+    { job: 'ICB/10118/2025-26', importer: 'Metro Exports', mode: 'Rail', port: 'Kolkata', date: '08 Apr 2025', status: 'On Hold', color: '#EF4444' },
+  ];
 
   return (
-    <div className="content-stretch flex flex-col gap-[12px] items-start relative size-full">
-      {/* Dashboard Navigation Toolbar */}
+    <div className="flex flex-col h-full overflow-hidden bg-[#f4f6fb]">
       <DashboardNavToolbar activeTab={activeTab} onTabChange={onTabChange} />
 
-      {/* Filter Bar */}
-      <div className="bg-[#ebeef7] h-[50px] rounded-[8px] shrink-0 w-full">
-        <div className="flex flex-row items-center size-full">
-          <div className="content-stretch flex items-center px-[12px] py-[8px] relative size-full">
-            {/* Apply Filter Text and Filters */}
-            <div className="basis-0 content-stretch flex gap-[12px] grow items-center min-h-px min-w-px relative shrink-0">
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-[18px] not-italic overflow-ellipsis overflow-hidden relative shrink-0 text-[#050e25] text-[14px] text-nowrap">
-                Apply Filter
-              </p>
-              <div className="flex h-full items-center justify-center relative shrink-0 w-0">
-                <div className="flex-none h-full rotate-[90deg]">
-                  <div className="h-full relative w-[26px]">
-                    <div className="absolute inset-[-1px_0_0_0]">
-                      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 26 1">
-                        <line stroke="#D0D5E3" x2="26" y1="0.5" y2="0.5" />
-                      </svg>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Filter Bar */}
+        <div className="bg-white rounded-lg border border-[#d0d5e3] px-4 py-2.5 flex items-center gap-4 flex-wrap">
+          <p className="text-[13px] text-[#050e25] font-medium shrink-0">Apply Filter</p>
+          <div className="w-px h-5 bg-[#d0d5e3]" />
+          <div className="flex gap-2 flex-wrap flex-1">
+            <FilterDropdown label="Branch" value={branch} options={['All','Chennai','Mumbai','Delhi','Bangalore','Kolkata','Hyderabad']} onChange={setBranch} />
+            <FilterDropdown label="Mode" value={mode} options={['All','Sea','Air','Road','Rail']} onChange={setMode} />
+            <FilterDropdown label="Importer" value={importer} options={['All','ABC Industries','XYZ Corporation','Tech Solutions','Global Traders','Metro Exports']} onChange={setImporter} />
+          </div>
+          <button onClick={() => { setBranch('All'); setMode('All'); setImporter('All'); }}
+            className="text-[13px] text-[#3874ff] font-semibold hover:underline flex items-center gap-1 shrink-0">
+            Clear Filter
+          </button>
+        </div>
+
+        {/* Header Row */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-[16px] font-semibold text-[#050e25]">Jobs Overview</h2>
+            <p className="text-[11px] text-[#626776] mt-0.5">Last updated: {lastUpdated.toLocaleTimeString()}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={handleRefresh} title="Refresh" className="p-1.5 rounded hover:bg-white border border-transparent hover:border-[#d0d5e3] transition-all">
+              <RefreshCw className={`w-4 h-4 text-[#626776] ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+            <button onClick={handleDownload} title="Download CSV" className="p-1.5 rounded hover:bg-white border border-transparent hover:border-[#d0d5e3] transition-all">
+              <Download className="w-4 h-4 text-[#626776]" />
+            </button>
+            <button title="Customize" className="p-1.5 rounded hover:bg-white border border-transparent hover:border-[#d0d5e3] transition-all">
+              <Settings2 className="w-4 h-4 text-[#626776]" />
+            </button>
+            <PeriodDropdown value={period} options={['Last 7 days','Last 30 days','Last 3 months','Last 6 months','Last year']} onChange={setPeriod} />
+          </div>
+        </div>
+
+        {/* Stat Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard label="Total Jobs" value={data.total} sub="+12% from last period" trend="up" icon={FileText} color="#3874FF" onClick={() => setActiveCard(activeCard === 'total' ? null : 'total')} active={activeCard === 'total'} />
+          <StatCard label="In Progress" value={data.inProgress} sub="Active shipments" trend="neutral" icon={Clock} color="#F97316" onClick={() => setActiveCard(activeCard === 'progress' ? null : 'progress')} active={activeCard === 'progress'} />
+          <StatCard label="Completed" value={data.completed} sub="Successfully cleared" trend="up" icon={CheckCircle2} color="#22C55E" onClick={() => setActiveCard(activeCard === 'completed' ? null : 'completed')} active={activeCard === 'completed'} />
+          <StatCard label="Pending Action" value={data.pending} sub="Requires attention" trend="down" icon={AlertCircle} color="#EF4444" onClick={() => setActiveCard(activeCard === 'pending' ? null : 'pending')} active={activeCard === 'pending'} />
+        </div>
+
+        {/* Charts Row 1 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white rounded-lg border border-[#d0d5e3] p-5">
+            <h3 className="text-[14px] font-semibold text-[#050e25] mb-4">Monthly Volume Trend</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={data.monthlyVolume}>
+                <defs>
+                  <linearGradient id="gImport" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3874FF" stopOpacity={0.15} /><stop offset="95%" stopColor="#3874FF" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gExport" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22C55E" stopOpacity={0.15} /><stop offset="95%" stopColor="#22C55E" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#626776' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#626776' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                <Area type="monotone" dataKey="Import" stroke="#3874FF" strokeWidth={2} fill="url(#gImport)" dot={{ r: 3, fill: '#3874FF' }} activeDot={{ r: 5 }} />
+                <Area type="monotone" dataKey="Export" stroke="#22C55E" strokeWidth={2} fill="url(#gExport)" dot={{ r: 3, fill: '#22C55E' }} activeDot={{ r: 5 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-lg border border-[#d0d5e3] p-5">
+            <h3 className="text-[14px] font-semibold text-[#050e25] mb-4">Jobs by Status</h3>
+            <div className="flex items-center gap-4">
+              <ResponsiveContainer width="55%" height={200}>
+                <PieChart>
+                  <Pie data={data.jobsByStatus} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" labelLine={false} label={renderLabel}>
+                    {data.jobsByStatus.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex-1 space-y-2.5">
+                {data.jobsByStatus.map(s => (
+                  <div key={s.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: s.color }} />
+                      <p className="text-[12px] text-[#626776]">{s.name}</p>
                     </div>
+                    <p className="text-[13px] font-semibold text-[#050e25]">{s.value.toLocaleString()}</p>
                   </div>
+                ))}
+                <div className="pt-2 border-t border-[#f0f0f0] flex justify-between">
+                  <p className="text-[12px] font-medium text-[#626776]">Total</p>
+                  <p className="text-[13px] font-semibold text-[#050e25]">{data.total.toLocaleString()}</p>
                 </div>
               </div>
-              {/* Filter Chips */}
-              <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
-                <FilterDropdown 
-                  label="Branch"
-                  value={branchFilter}
-                  options={branchOptions}
-                  onChange={setBranchFilter}
-                />
-                <FilterDropdown 
-                  label="Mode of Transport"
-                  value={modeFilter}
-                  options={modeOptions}
-                  onChange={setModeFilter}
-                />
-                <FilterDropdown 
-                  label="Importer"
-                  value={importerFilter}
-                  options={importerOptions}
-                  onChange={setImporterFilter}
-                />
-              </div>
-            </div>
-
-            {/* Clear Filter Button */}
-            <div 
-              className="content-stretch flex gap-[4px] items-center justify-center leading-[0] px-[8px] py-[4px] rounded-[4px] shrink-0 cursor-pointer hover:bg-white/50 transition-colors"
-              onClick={handleClearFilters}
-            >
-              <div className="relative shrink-0 size-[18px]">
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 14 14">
-                  <path d={svgPaths.pbf27c00} fill="#3874FF" />
-                </svg>
-              </div>
-              <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center not-italic relative shrink-0 text-[#3874ff] text-[14px] text-nowrap">
-                <p className="leading-[18px]">Clear Filter</p>
-              </div>
-            </div>
-
-            {/* Download Button removed */}
-          </div>
-        </div>
-      </div>
-
-      {/* Jobs Overview Header */}
-      <div className="content-stretch flex items-center justify-between relative shrink-0 w-full">
-        <div className="content-stretch flex items-center relative shrink-0 w-[799px]">
-          <p className="basis-0 font-['Inter:Semi_Bold',sans-serif] font-semibold grow h-[18px] leading-[18px] min-h-px min-w-px not-italic overflow-ellipsis overflow-hidden relative shrink-0 text-[#050e25] text-[16px] text-nowrap">
-            Jobs Overview
-          </p>
-        </div>
-        <div className="content-stretch flex gap-[16px] items-center relative shrink-0">
-          {/* Icons */}
-          <div className="content-stretch flex gap-[12px] items-center relative shrink-0">
-            {/* Customize Icon */}
-            <div 
-              className="relative shrink-0 size-[18px] cursor-pointer hover:opacity-70 transition-opacity"
-              onClick={handleCustomize}
-            >
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18 18">
-                <path d={svgPaths.p1e628400} fill="#626776" />
-              </svg>
-            </div>
-            {/* Refresh Icon with Indicator */}
-            <div 
-              className="relative shrink-0 size-[18px] cursor-pointer hover:opacity-70 transition-opacity"
-              onClick={handleRefresh}
-            >
-              <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18 18">
-                <mask height="18" id="mask0_refresh" maskUnits="userSpaceOnUse" style={{ maskType: "alpha" }} width="18" x="0" y="0">
-                  <rect fill="#D9D9D9" height="18" width="18" />
-                </mask>
-                <g mask="url(#mask0_refresh)">
-                  <path d={svgPaths.p1e488580} fill="#626776" />
-                  <g>
-                    <circle cx="15.1875" cy="2.8125" fill="#CF3B3B" fillOpacity="0.19" r="2.8125" />
-                    <circle cx="15.1881" cy="2.8124" fill="#CF3B3B" r="1.6875" />
-                  </g>
-                </g>
-              </svg>
-            </div>
-            
-            {/* Download Icon */}
-            <div 
-              className="relative shrink-0 size-[18px] cursor-pointer hover:opacity-70 transition-opacity"
-              onClick={handleDownload}
-            >
-               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18 18">
-                 <path d="M14.25 11.25V14.25H3.75V11.25H2.25V14.25C2.25 15.075 2.925 15.75 3.75 15.75H14.25C15.075 15.75 15.75 15.075 15.75 14.25V11.25H14.25ZM12.75 8.25L11.6925 7.1925L9.75 9.1275V2.25H8.25V9.1275L6.3075 7.1925L5.25 8.25L9 12L12.75 8.25Z" fill="#626776"/>
-               </svg>
-            </div>
-          </div>
-          {/* Period Dropdown */}
-          <PeriodDropdown 
-            value={timePeriod}
-            options={periodOptions}
-            onChange={setTimePeriod}
-          />
-        </div>
-      </div>
-
-      {/* Dashboard Content - Import the existing Body component sections */}
-      <div className="w-full flex-1 overflow-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* Stats Cards */}
-          <div className="bg-white rounded-lg p-4 border border-[#d0d5e3]">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[12px] text-[#626776]">Total Jobs</p>
-            </div>
-            <p className="text-[24px] font-semibold text-[#050e25]">847</p>
-            <p className="text-[12px] text-[#3874ff] mt-1">+12% from last period</p>
-          </div>
-
-          <div className="bg-white rounded-lg p-4 border border-[#d0d5e3]">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[12px] text-[#626776]">In Progress</p>
-            </div>
-            <p className="text-[24px] font-semibold text-[#050e25]">234</p>
-            <p className="text-[12px] text-[#ff9800] mt-1">Active shipments</p>
-          </div>
-
-          <div className="bg-white rounded-lg p-4 border border-[#d0d5e3]">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[12px] text-[#626776]">Completed</p>
-            </div>
-            <p className="text-[24px] font-semibold text-[#050e25]">589</p>
-            <p className="text-[12px] text-[#4caf50] mt-1">Successfully delivered</p>
-          </div>
-
-          <div className="bg-white rounded-lg p-4 border border-[#d0d5e3]">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[12px] text-[#626776]">Pending Action</p>
-            </div>
-            <p className="text-[24px] font-semibold text-[#050e25]">24</p>
-            <p className="text-[12px] text-[#f44336] mt-1">Requires attention</p>
-          </div>
-        </div>
-
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-          {/* Chart 1 - Jobs by Status */}
-          <div className="bg-white rounded-lg p-6 border border-[#d0d5e3]">
-            <h3 className="text-[14px] font-semibold text-[#050e25] mb-4">Jobs by Status</h3>
-            <div className="h-[200px] flex items-center justify-center">
-              <img src={imgRectangle} alt="Jobs by Status Chart" className="max-h-full max-w-full object-contain" />
-            </div>
-          </div>
-
-          {/* Chart 2 - Monthly Volume */}
-          <div className="bg-white rounded-lg p-6 border border-[#d0d5e3]">
-            <h3 className="text-[14px] font-semibold text-[#050e25] mb-4">Monthly Volume Trend</h3>
-            <div className="h-[200px] flex items-center justify-center">
-              <img src={imgRectangle1} alt="Monthly Volume Chart" className="max-h-full max-w-full object-contain" />
             </div>
           </div>
         </div>
 
-        {/* Additional Charts */}
+        {/* Charts Row 2 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Chart 3 */}
-          <div className="bg-white rounded-lg p-6 border border-[#d0d5e3]">
+          <div className="bg-white rounded-lg border border-[#d0d5e3] p-5">
             <h3 className="text-[14px] font-semibold text-[#050e25] mb-4">Filing Due Dates</h3>
-            <div className="h-[180px] flex items-center justify-center">
-              <img src={imgRectangle2} alt="Due Dates" className="max-h-full max-w-full object-contain" />
-            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={data.filingDue} barSize={10}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#626776' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#626776' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="Overdue" fill="#EF4444" radius={[3,3,0,0]} />
+                <Bar dataKey="Today" fill="#3874FF" radius={[3,3,0,0]} />
+                <Bar dataKey="Upcoming" fill="#94A3B8" radius={[3,3,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* Chart 4 */}
-          <div className="bg-white rounded-lg p-6 border border-[#d0d5e3]">
-            <h3 className="text-[14px] font-semibold text-[#050e25] mb-4">TAT Analysis</h3>
-            <div className="h-[180px] flex items-center justify-center">
-              <img src={imgRectangle3} alt="TAT Analysis" className="max-h-full max-w-full object-contain" />
-            </div>
+          <div className="bg-white rounded-lg border border-[#d0d5e3] p-5">
+            <h3 className="text-[14px] font-semibold text-[#050e25] mb-4">TAT Analysis (days)</h3>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={data.tatData} barSize={24}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis dataKey="mode" tick={{ fontSize: 11, fill: '#626776' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#626776' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="Avg" fill="#3874FF" radius={[3,3,0,0]} />
+                <Bar dataKey="Target" fill="#EF444440" radius={[3,3,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* Chart 5 */}
-          <div className="bg-white rounded-lg p-6 border border-[#d0d5e3]">
+          <div className="bg-white rounded-lg border border-[#d0d5e3] p-5">
             <h3 className="text-[14px] font-semibold text-[#050e25] mb-4">Top Importers</h3>
-            <div className="h-[180px] flex items-center justify-center">
-              <img src={imgRectangle4} alt="Top Importers" className="max-h-full max-w-full object-contain" />
+            <div className="space-y-3">
+              {data.topImporters.map((imp, i) => {
+                const pct = (imp.jobs / data.topImporters[0].jobs) * 100;
+                const colors = ['#3874FF','#22C55E','#F97316','#8B5CF6','#EF4444'];
+                return (
+                  <div key={imp.name}>
+                    <div className="flex justify-between mb-1">
+                      <p className="text-[12px] text-[#050e25] truncate max-w-[130px]">{imp.name}</p>
+                      <p className="text-[12px] font-semibold text-[#050e25]">{imp.jobs}</p>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-[#ebeef7] overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: colors[i] }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* Filing Due Section - Separate from Jobs Overview */}
-        <div className="w-full h-[400px] mt-6">
-          <FilingDueSection />
+        {/* Recent Jobs Table */}
+        <div className="bg-white rounded-lg border border-[#d0d5e3] p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[14px] font-semibold text-[#050e25]">Recent Jobs</h3>
+            <button className="text-[12px] text-[#3874ff] font-medium hover:underline">View All →</button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="border-b border-[#f0f0f0]">
+                  {['Job No.','Importer','Mode','Port','BE Date','Status'].map(h => (
+                    <th key={h} className="text-left pb-2.5 text-[#626776] font-medium pr-6 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {recentJobs.map((row, i) => (
+                  <tr key={i} className="border-b border-[#fafafa] hover:bg-[#f5f7ff] transition-colors cursor-pointer group">
+                    <td className="py-2.5 pr-6 text-[#3874ff] font-medium whitespace-nowrap group-hover:underline">{row.job}</td>
+                    <td className="py-2.5 pr-6 text-[#050e25] whitespace-nowrap">{row.importer}</td>
+                    <td className="py-2.5 pr-6 text-[#626776]">{row.mode}</td>
+                    <td className="py-2.5 pr-6 text-[#626776]">{row.port}</td>
+                    <td className="py-2.5 pr-6 text-[#626776] whitespace-nowrap">{row.date}</td>
+                    <td className="py-2.5 pr-6">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ backgroundColor: row.color + '15', color: row.color }}>
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
